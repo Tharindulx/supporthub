@@ -1,0 +1,73 @@
+@if (!ready) {
+  <main class="loading"><span class="brand-mark">s</span><p>Opening your workspace…</p></main>
+} @else if (!user) {
+  <main class="auth-layout">
+    <section class="auth-story"><a class="brand" href="/"><span class="brand-mark">s</span>SupportHub<span class="brand-dot">●</span></a>
+      <div><span class="eyebrow">A LITTLE LESS FRICTION</span><h1>Good support.<br>Better workdays.</h1><p>One thoughtful space to ask for help, untangle problems, and keep your team moving.</p>
+      <div class="sample-ticket"><span class="sample-check">✓</span><div><strong>You're back on track.</strong><small>Every request has a place. Every person has support.</small></div></div></div>
+      <small>Built for people. Designed for getting things done.</small>
+    </section>
+    <section class="auth-form"><div class="form-wrap"><span class="eyebrow">YOUR SUPPORT WORKSPACE</span><h2>{{registering?'Make yourself at home.':'Welcome back.'}}</h2><p class="muted">{{registering?'Create an account to connect with your support team.':'Sign in to see what needs a helping hand.'}}</p>
+      @if(error){<div class="alert error" role="alert">{{error}}</div>}
+      <form (ngSubmit)="login()" #authForm="ngForm">
+        @if(registering){<label>Your name<input name="name" [(ngModel)]="name" required maxlength="100" autocomplete="name"></label>}
+        <label>Email address<input name="email" type="email" [(ngModel)]="email" required email maxlength="190" autocomplete="username" placeholder="you@company.com"></label>
+        <label>Password<input name="password" type="password" [(ngModel)]="password" required [minlength]="registering?12:1" maxlength="64" [autocomplete]="registering?'new-password':'current-password'" placeholder="Enter your password"></label>
+        @if(registering){<small class="muted">Use 12–64 characters. New accounts join as requesters.</small>}
+        <button class="primary wide" [disabled]="busy||authForm.invalid">{{busy?'Please wait…':registering?'Create account':'Sign in'}} <span>↗</span></button>
+      </form><p class="auth-switch">{{registering?'Already have an account?':'New to SupportHub?'}} <button class="text-button" (click)="registering=!registering;error=''">{{registering?'Sign in':'Create an account'}}</button></p>
+      <div class="auth-note"><span class="tiny-dot"></span> A secure space for your team's support requests.</div>
+    </div></section>
+  </main>
+} @else {
+  <div class="workspace" [attr.inert]="creating||selected?'':null">
+    <aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">s</span>SupportHub<span class="brand-dot">●</span></a>
+      <div class="workspace-label"><span class="workspace-icon">W</span><div>My workspace<small>TEAM HELPDESK</small></div><span class="workspace-chevron">⌄</span></div>
+      <span class="nav-label">WORKSPACE</span><nav aria-label="Main navigation">
+        <button [class.active]="view==='tickets'&&!mine" (click)="showTickets()"><span class="nav-icon">▤</span>All tickets<span class="nav-count">{{stats.total}}</span></button>
+        @if(staff){<button [class.active]="view==='tickets'&&mine" (click)="showTickets(true)"><span class="nav-icon">◎</span>Assigned to me</button>}
+        @if(user.role==='ADMIN'){<button [class.active]="view==='team'" (click)="showTeam()"><span class="nav-icon">♧</span>Team members</button>}
+      </nav><div class="sidebar-bottom"><div class="help-card"><span>✦</span><strong>A little clarity goes a long way.</strong><p>Include the details. Find the answer faster.</p><button (click)="newTicket()">Create a request ↗</button></div>
+        <div class="profile"><span class="avatar">{{initials(user.name)}}</span><div><strong>{{user.name}}</strong><small>{{label(user.role)}}</small></div><button class="signout" (click)="logout()" [disabled]="busy" aria-label="Sign out" title="Sign out">↪</button></div>
+      </div>
+    </aside>
+    <main class="main"><header class="topbar"><span>Workspace <span class="slash">/</span> <strong>{{view==='team'?'Team members':'Tickets'}}</strong></span><button class="mobile-signout outline" (click)="logout()" [disabled]="busy">Sign out</button><span class="live"><span class="tiny-dot"></span> Your team, connected</span></header>
+      <div class="content">
+        <section class="page-heading"><div><span class="eyebrow">LET'S KEEP THINGS MOVING</span><h1>{{view==='team'?'People behind the support.':mine?'Your queue. Your impact.':'Every request, in good hands.'}}</h1><p class="muted">{{view==='team'?'Manage access and give your people the right tools.':'A clear view of what’s happening and what needs you next.'}}</p></div><button class="primary" (click)="newTicket()" [disabled]="busy"><span>＋</span> New ticket</button></section>
+        @if(error){<div class="alert error" role="alert">{{error}}</div>}
+        @if(notice){<div class="alert success" role="status">{{notice}}</div>}
+        @if(view==='tickets'){
+          <section class="stats" aria-label="Ticket overview">
+            <button class="stat" (click)="filterStatus('')"><span>Total tickets<span class="stat-icon">▤</span></span><strong>{{stats.total}}</strong><small>All requests in your workspace</small></button>
+            <button class="stat" (click)="filterStatus('OPEN')"><span>Open tickets<span class="stat-icon amber">◷</span></span><strong>{{stats.open}}</strong><small><span class="tiny-dot amber-dot"></span> Ready for a helping hand</small></button>
+            <button class="stat" (click)="filterStatus('IN_PROGRESS')"><span>In progress<span class="stat-icon blue">↗</span></span><strong>{{stats.inProgress}}</strong><small>Good things are in motion</small></button>
+            <button class="stat resolved" (click)="filterStatus('RESOLVED')"><span>Resolved<span class="stat-icon">✓</span></span><strong>{{stats.resolved}}</strong><small>One less thing to worry about</small></button>
+          </section>
+          <section class="ticket-panel"><div class="panel-heading"><div><h2>{{mine?'Assigned to me':'Ticket overview'}} <span class="total-badge">{{tickets.totalElements}}</span></h2><p>Small requests. Meaningful resolutions.</p></div><button class="outline" (click)="filter()" [disabled]="busy">↻ Refresh</button></div>
+            <div class="tabs" aria-label="Filter by status"><button [class.selected]="status===''" (click)="filterStatus('')">All tickets</button>@for(s of statuses;track s){<button [class.selected]="status===s" (click)="filterStatus(s)">{{label(s)}}</button>}</div>
+            <form class="filters" (ngSubmit)="filter()"><div class="search-box"><span>⌕</span><input name="query" aria-label="Search tickets" [(ngModel)]="query" maxlength="160" placeholder="Search by title or description…"><button type="submit" [disabled]="busy">Search</button></div><select name="priority" aria-label="Filter by priority" [(ngModel)]="priority" (change)="filter()"><option value="">All priorities</option>@for(p of priorities;track p){<option [value]="p">{{label(p)}}</option>}</select></form>
+            <div class="table-scroll"><table class="ticket-table"><thead><tr><th>TICKET / SUBJECT</th><th>STATUS</th><th>PRIORITY</th><th>ASSIGNEE</th><th>UPDATED</th><th><span class="sr-only">Open</span></th></tr></thead><tbody>
+              @for(t of tickets.content;track t.id){<tr><td><button class="ticket-link" (click)="open(t)"><small>SH-{{t.id.toString().padStart(4,'0')}} <span>· {{label(t.category)}}</span></small><strong>{{t.title}}</strong></button></td><td><span class="badge status-{{t.status}}"><span>●</span> {{label(t.status)}}</span></td><td><span class="priority priority-{{t.priority}}"><span>▰</span> {{label(t.priority)}}</span></td><td><div class="assignee">@if(t.assignee){<span class="avatar small">{{initials(t.assignee.name)}}</span>{{t.assignee.name}}}@else{<span class="avatar small unassigned">–</span><span class="muted">Unassigned</span>}</div></td><td class="date">{{t.updatedAt|date:'MMM d, HH:mm'}}</td><td><button class="open-button" (click)="open(t)" [attr.aria-label]="'Open '+t.title">↗</button></td></tr>}
+              @empty{<tr><td colspan="6"><div class="empty"><span>◎</span><h3>All clear here.</h3><p>No tickets match these filters. Try another search or create a new request.</p></div></td></tr>}
+            </tbody></table></div><footer class="table-footer"><span>{{tickets.totalElements}} tickets · Page {{tickets.number+1}} of {{tickets.totalPages||1}}</span><div><button class="outline" [disabled]="busy||page===0" (click)="changePage(-1)">← Previous</button><button class="outline" [disabled]="busy||page+1>=tickets.totalPages" (click)="changePage(1)">Next →</button></div></footer>
+          </section><footer class="page-footer"><span><span class="tiny-dot"></span> A little support makes a big difference.</span><span>SupportHub / Team workspace</span></footer>
+        } @else {
+          <section class="ticket-panel"><div class="panel-heading"><div><h2>Team directory <span class="total-badge">{{team.length}}</span></h2><p>New users can register from the sign-in page. Assign their role here.</p></div></div><div class="table-scroll"><table><thead><tr><th>PERSON</th><th>ROLE</th><th>ACCESS</th><th>ACTION</th></tr></thead><tbody>@for(person of team;track person.id){<tr><td><strong>{{person.name}}</strong><small class="person-email">{{person.email}}</small></td><td><select [(ngModel)]="person.role" [disabled]="person.id===user.id" [attr.aria-label]="'Role for '+person.name">@for(role of roles;track role){<option [value]="role">{{label(role)}}</option>}</select></td><td><label class="checkbox"><input type="checkbox" [(ngModel)]="person.enabled" [disabled]="person.id===user.id"> Enabled</label></td><td><button class="outline" (click)="saveUser(person)" [disabled]="busy||person.id===user.id">Save</button></td></tr>}</tbody></table></div></section>
+        }
+      </div>
+    </main>
+  </div>
+  @if(creating){<div class="overlay"><section class="modal" appDialogFocus (dialogEscape)="!busy && (creating=false)" role="dialog" aria-modal="true" aria-labelledby="new-title"><header><div><span class="eyebrow">WE'RE HERE TO HELP</span><h2 id="new-title">Create a new ticket</h2></div><button class="close" (click)="creating=false" [disabled]="busy" aria-label="Close new ticket">×</button></header>
+    @if(error){<div class="alert error" role="alert">{{error}}</div>}
+    <form (ngSubmit)="create()" #ticketForm="ngForm"><label>Subject<input name="title" [(ngModel)]="draft.title" required maxlength="160" placeholder="A short summary of what you need"></label><div class="form-row"><label>Category<select name="category" [(ngModel)]="draft.category">@for(c of categories;track c){<option [value]="c">{{label(c)}}</option>}</select></label><label>Priority<select name="newPriority" [(ngModel)]="draft.priority">@for(p of priorities;track p){<option [value]="p">{{label(p)}}</option>}</select></label></div><label>What's happening?<textarea name="description" [(ngModel)]="draft.description" required maxlength="8000" rows="6" placeholder="Tell us what happened, what you expected, and what you've already tried."></textarea></label><small class="muted">Please don't include passwords or other sensitive information.</small><footer class="modal-actions"><button type="button" class="outline" (click)="creating=false" [disabled]="busy">Cancel</button><button class="primary" [disabled]="busy||ticketForm.invalid">{{busy?'Creating…':'Create ticket ↗'}}</button></footer></form>
+  </section></div>}
+  @if(selected){<div class="overlay detail-overlay"><section class="detail-panel" appDialogFocus (dialogEscape)="!busy && (selected=null)" role="dialog" aria-modal="true" aria-labelledby="detail-title"><header><div><span class="eyebrow">SH-{{selected.ticket.id.toString().padStart(4,'0')}} · {{label(selected.ticket.category)}}</span><h2 id="detail-title">{{selected.ticket.title}}</h2></div><button class="close" (click)="selected=null" [disabled]="busy" aria-label="Close ticket">×</button></header>
+    @if(error){<div class="alert error" role="alert">{{error}} <button class="text-button" (click)="refreshDetail()">Refresh ticket</button></div>}
+    @if(notice){<div class="alert success" role="status">{{notice}}</div>}
+    <div class="detail-meta"><span class="badge status-{{selected.ticket.status}}">● {{label(selected.ticket.status)}}</span><span>Opened by {{selected.ticket.requester.name}} · {{selected.ticket.createdAt|date:'mediumDate'}}</span></div><p class="description">{{selected.ticket.description}}</p>
+    @if(staff){<form class="assignment" (ngSubmit)="save()"><div class="form-row"><label>Status<select name="status" [(ngModel)]="edit.status">@for(s of nextStatuses();track s){<option [value]="s">{{label(s)}}</option>}</select></label><label>Priority<select name="priority" [(ngModel)]="edit.priority">@for(p of priorities;track p){<option [value]="p">{{label(p)}}</option>}</select></label></div><label>Assigned to<select name="assignee" [(ngModel)]="edit.assigneeId"><option [ngValue]="null">Unassigned</option>@for(a of agents;track a.id){<option [ngValue]="a.id">{{a.name}}</option>}</select></label><button class="primary" [disabled]="busy">Save changes</button></form>}
+    <section class="conversation"><h3>Conversation <span class="total-badge">{{selected.comments.length}}</span></h3>@for(c of selected.comments;track c.id){<article class="comment"><span class="avatar small">{{initials(c.author.name)}}</span><div><strong>{{c.author.name}}</strong><time>{{c.createdAt|date:'MMM d, HH:mm'}}</time><p>{{c.body}}</p></div></article>}@empty{<p class="muted">No comments yet. A useful detail can make all the difference.</p>}
+      @if(selected.ticket.status!=='CLOSED'){<form (ngSubmit)="sendComment()" #commentForm="ngForm"><label>Add a comment<textarea name="comment" [(ngModel)]="commentText" required maxlength="4000" rows="3" placeholder="Share an update or ask a question…"></textarea></label><button class="primary" [disabled]="busy||commentForm.invalid">Send comment ↗</button></form>}@else{<p class="closed-note">This ticket is closed. Ask a support agent to reopen it if you need more help.</p>}
+    </section><section class="activity"><h3>Activity</h3>@for(a of selected.activities;track a.id){<div><span class="activity-dot"></span><p><strong>{{a.actor}}</strong> {{a.action}}<small>{{a.createdAt|date:'MMM d, HH:mm'}}</small></p></div>}</section>
+  </section></div>}
+}
